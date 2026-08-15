@@ -20,12 +20,18 @@ export async function requireAuth(request: AuthenticatedRequest, response: Respo
   }
 }
 
-export function requireTeam(request: AuthenticatedRequest, response: Response): boolean {
-  if (!request.user || request.params['teamId'] !== request.user.teamId) { response.status(403).json({ error: 'No tienes acceso a este team.' }); return false; }
-  return true;
+export function requireTeam(request: AuthenticatedRequest, response: Response, next: NextFunction): void {
+  if (!request.user || request.params['teamId'] !== request.user.teamId) { 
+    response.status(403).json({ error: 'No tienes acceso a este team.' }); 
+    return; 
+  }
+  next();
 }
 
-export function requireCoach(request: AuthenticatedRequest, response: Response): boolean {
-  if (!request.user || request.user.role !== 'coach') { response.status(403).json({ error: 'Solo un coach puede realizar esta acción.' }); return false; }
-  return true;
+export function requireCoach(request: AuthenticatedRequest, response: Response, next: NextFunction): void {
+  if (!request.user || request.user.role !== 'coach') { 
+    response.status(403).json({ error: 'Solo un coach puede realizar esta acción.' }); 
+    return; 
+  }
+  next();
 }
