@@ -1,0 +1,306 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Valoplant Backend API",
+    "version": "1.0.0",
+    "description": "API REST para la aplicación Valoplant, herramienta para coaches de equipos de Valorant."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Servidor Local"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "UserRole": {
+        "type": "string",
+        "enum": ["coach", "player"]
+      },
+      "TeamUser": {
+        "type": "object",
+        "properties": {
+          "userId": { "type": "string", "example": "uid12345" },
+          "teamId": { "type": "string", "example": "team-fenix" },
+          "role": { "$ref": "#/components/schemas/UserRole" },
+          "name": { "type": "string", "example": "Sebastián" }
+        }
+      },
+      "CoachNoteInput": {
+        "type": "object",
+        "required": ["content"],
+        "properties": {
+          "title": { "type": "string", "example": "Estrategia Ascent" },
+          "content": { "type": "string", "example": "Hacer un push en B main con humos de Omen." },
+          "imageUrl": { "type": "string", "nullable": true, "example": "/uploads/teams/team-fenix/notes/abc.jpg" }
+        }
+      },
+      "CoachNote": {
+        "allOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "example": "note-xyz" },
+              "teamId": { "type": "string", "example": "team-fenix" },
+              "coachId": { "type": "string", "example": "uid12345" },
+              "coachName": { "type": "string", "example": "Sebastián" },
+              "createdAt": { "type": "string", "format": "date-time" },
+              "updatedAt": { "type": "string", "format": "date-time" }
+            }
+          },
+          { "$ref": "#/components/schemas/CoachNoteInput" }
+        ]
+      },
+      "ScheduleEventType": {
+        "type": "string",
+        "enum": ["clase", "scrim", "premier"]
+      },
+      "WeekDay": {
+        "type": "string",
+        "enum": ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+      },
+      "ScheduleEventInput": {
+        "type": "object",
+        "required": ["type", "day", "time"],
+        "properties": {
+          "type": { "$ref": "#/components/schemas/ScheduleEventType" },
+          "day": { "$ref": "#/components/schemas/WeekDay" },
+          "time": { "type": "string", "example": "19:30", "description": "Formato HH:mm" },
+          "description": { "type": "string", "example": "Scrim vs equipo X" },
+          "timezone": { "type": "string", "example": "America/Santiago" }
+        }
+      },
+      "ScheduleEvent": {
+        "allOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "example": "event-123" },
+              "teamId": { "type": "string", "example": "team-fenix" }
+            }
+          },
+          { "$ref": "#/components/schemas/ScheduleEventInput" }
+        ]
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/auth/me": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Obtener perfil del usuario",
+        "description": "Obtiene los datos del usuario autenticado a través del token.",
+        "responses": {
+          "200": { 
+            "description": "Perfil obtenido correctamente",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/TeamUser" } } }
+          },
+          "401": { "description": "No autenticado" }
+        }
+      }
+    },
+    "/api/auth/register-profile": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Registrar perfil inicial",
+        "description": "Registra un nuevo usuario en la colección de Firestore (para ser usado tras crearlo en Firebase Auth).",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["uid", "name", "teamId", "role"],
+                "properties": {
+                  "uid": { "type": "string", "example": "uid12345" },
+                  "name": { "type": "string", "example": "Sebastián" },
+                  "teamId": { "type": "string", "example": "team-fenix" },
+                  "role": { "$ref": "#/components/schemas/UserRole" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Perfil creado" },
+          "400": { "description": "Faltan datos requeridos" }
+        }
+      }
+    },
+    "/api/notes": {
+      "get": {
+        "tags": ["Notes"],
+        "summary": "Listar notas",
+        "description": "Devuelve las notas (CoachNote) asociadas al equipo del usuario autenticado.",
+        "responses": {
+          "200": {
+            "description": "Notas obtenidas",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/CoachNote" } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Notes"],
+        "summary": "Crear nota",
+        "description": "Crea una nueva nota. Solo permitido para coaches.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CoachNoteInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": { 
+            "description": "Nota creada",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CoachNote" } } }
+          }
+        }
+      }
+    },
+    "/api/notes/{id}": {
+      "put": {
+        "tags": ["Notes"],
+        "summary": "Editar nota",
+        "description": "Edita una nota existente. Solo permitido para coaches.",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" }, "example": "note-xyz" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CoachNoteInput" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Nota actualizada" }
+        }
+      },
+      "delete": {
+        "tags": ["Notes"],
+        "summary": "Eliminar nota",
+        "description": "Elimina una nota por ID. Solo permitido para coaches.",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" }, "example": "note-xyz" }
+        ],
+        "responses": {
+          "200": { "description": "Nota eliminada" }
+        }
+      }
+    },
+    "/api/notes/upload": {
+      "post": {
+        "tags": ["Notes"],
+        "summary": "Subir imagen para nota",
+        "description": "Sube una imagen para una nota (Multipart form-data) y devuelve su URL.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "image": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { 
+            "description": "Imagen subida",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "imageUrl": { "type": "string" } } } } }
+          }
+        }
+      }
+    },
+    "/api/schedule": {
+      "get": {
+        "tags": ["Schedule"],
+        "summary": "Listar eventos (Horario)",
+        "description": "Devuelve los eventos (ScheduleEvent) de horario del equipo del usuario autenticado.",
+        "responses": {
+          "200": {
+            "description": "Eventos obtenidos",
+            "content": {
+              "application/json": {
+                "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ScheduleEvent" } }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Schedule"],
+        "summary": "Crear evento de horario",
+        "description": "Crea un nuevo evento. Solo permitido para coaches.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ScheduleEventInput" }
+            }
+          }
+        },
+        "responses": {
+          "201": { 
+            "description": "Evento creado",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ScheduleEvent" } } }
+          }
+        }
+      }
+    },
+    "/api/schedule/{id}": {
+      "put": {
+        "tags": ["Schedule"],
+        "summary": "Editar evento",
+        "description": "Edita un evento de horario existente. Solo permitido para coaches.",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" }, "example": "event-123" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ScheduleEventInput" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Evento actualizado" }
+        }
+      },
+      "delete": {
+        "tags": ["Schedule"],
+        "summary": "Eliminar evento",
+        "description": "Elimina un evento por ID. Solo permitido para coaches.",
+        "parameters": [
+          { "in": "path", "name": "id", "required": true, "schema": { "type": "string" }, "example": "event-123" }
+        ],
+        "responses": {
+          "200": { "description": "Evento eliminado" }
+        }
+      }
+    }
+  }
+}
