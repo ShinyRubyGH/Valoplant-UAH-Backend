@@ -28,6 +28,11 @@ app.use('/api/auth', authRouter);
 app.use('/api/notes', notesRouter);
 app.use('/api/schedule', scheduleRouter);
 
+// Redirigir la raíz a la documentación Swagger
+app.get('/', (req, res) => {
+  res.redirect('/api-docs');
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Valoplant API is running' });
 });
