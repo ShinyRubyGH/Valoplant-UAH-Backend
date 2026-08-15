@@ -15,7 +15,8 @@ export async function requireAuth(request: AuthenticatedRequest, response: Respo
     }
     request.user = { userId: decoded.uid, teamId: data.teamId, role: data.role, name: data.name } as AuthenticatedUser;
     next();
-  } catch {
+  } catch (error) {
+    console.error('Auth Error:', error);
     response.status(401).json({ error: 'Token inválido o vencido.' });
   }
 }
