@@ -243,7 +243,10 @@
       "get": {
         "tags": ["Notes"],
         "summary": "Listar notas",
-        "description": "Devuelve las notas (CoachNote) asociadas al equipo del usuario autenticado.",
+        "description": "Devuelve las notas (CoachNote) asociadas al equipo del usuario autenticado o equipo autorizado.",
+        "parameters": [
+          { "name": "teamId", "in": "query", "required": false, "schema": { "type": "string" }, "description": "ID del equipo" }
+        ],
         "responses": {
           "200": {
             "description": "Notas obtenidas",
@@ -337,7 +340,10 @@
       "get": {
         "tags": ["Schedule"],
         "summary": "Listar eventos (Horario)",
-        "description": "Devuelve los eventos (ScheduleEvent) de horario del equipo del usuario autenticado.",
+        "description": "Obtiene la lista de eventos del equipo del usuario autenticado o equipo autorizado.",
+        "parameters": [
+          { "name": "teamId", "in": "query", "required": false, "schema": { "type": "string" }, "description": "ID del equipo" }
+        ],
         "responses": {
           "200": {
             "description": "Eventos obtenidos",

@@ -10,13 +10,31 @@ router.use(requireAuth);
 // Obtener notas del equipo
 router.get('/', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const teamId = req.user?.teamId;
-    if (!teamId) {
-       res.status(400).json({ error: 'Team ID es requerido' });
-       return;
+    const requestedTeamId = (req.query.teamId as string) || req.user?.teamId;
+    if (!requestedTeamId) {
+      res.status(400).json({ error: 'Team ID es requerido' });
+      return;
     }
 
-    const snapshot = await db.collection(`teams/${teamId}/coachNotes`)
+    let isAuthorized = false;
+    if (req.user?.teamId === requestedTeamId) {
+      isAuthorized = true;
+    } else {
+      const teamDoc = await db.collection('teams').doc(requestedTeamId).get();
+      if (teamDoc.exists) {
+        const allowedCoaches = teamDoc.data()?.allowedCoachEmails || [];
+        if (req.user?.email && allowedCoaches.includes(req.user.email)) {
+          isAuthorized = true;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      res.status(403).json({ error: 'No tienes permisos para ver las notas de este equipo' });
+      return;
+    }
+
+    const snapshot = await db.collection(`teams/${requestedTeamId}/coachNotes`)
       .orderBy('createdAt', 'desc')
       .get();
       

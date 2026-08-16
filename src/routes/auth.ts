@@ -32,9 +32,14 @@ router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response):
 // Endpoint para registrar un nuevo perfil (validando clave secreta si es Coach)
 router.post('/register-profile', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { uid, name, teamId, role, coachSecretKey } = req.body;
+    const { uid, name, teamId, role, email, coachSecretKey } = req.body;
     if (!uid || !name || !teamId || !role) {
-      res.status(400).json({ error: 'Faltan datos requeridos' });
+      res.status(400).json({ error: 'Faltan datos requeridos (uid, name, teamId, role)' });
+      return;
+    }
+
+    if (role !== 'coach' && role !== 'player') {
+      res.status(400).json({ error: 'El rol debe ser coach o player' });
       return;
     }
 
@@ -45,13 +50,19 @@ router.post('/register-profile', async (req: AuthenticatedRequest, res: Response
         return;
       }
     }
-    
-    await db.doc(`users/${uid}`).set({
+
+    const userData: any = {
       name: name.trim(),
       teamId: teamId.trim().toLowerCase(),
       role,
       createdAt: new Date()
-    });
+    };
+
+    if (email) {
+      userData.email = email.toLowerCase().trim();
+    }
+    
+    await db.doc(`users/${uid}`).set(userData, { merge: true });
 
     // Asegurar que el equipo quede registrado con sus datos y coach
     await db.doc(`teams/${teamId.trim().toLowerCase()}`).set({

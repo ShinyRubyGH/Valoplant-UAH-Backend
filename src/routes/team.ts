@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import { requireAuth, requireCoach } from '../middleware/auth.js';
-import { db } from '../firebase.js';
+import { db, adminAuth } from '../firebase.js';
 import { AuthenticatedRequest } from '../types.js';
 
 const router = Router();
@@ -36,12 +36,28 @@ router.get('/members', async (req: AuthenticatedRequest, res: Response): Promise
 
     const snapshot = await db.collection('users').where('teamId', '==', requestedTeamId).get();
     
-    const members = snapshot.docs.map(doc => {
+    const members = await Promise.all(snapshot.docs.map(async (doc) => {
       const data = doc.data();
+      let email = data.email;
+
+      // Autocompletar email si no existe en Firestore
+      if (!email) {
+        try {
+          const authRecord = await adminAuth.getUser(doc.id);
+          if (authRecord.email) {
+            email = authRecord.email.toLowerCase().trim();
+            // Guardar en Firestore para la próxima vez
+            await doc.ref.update({ email });
+          }
+        } catch (e) {
+          console.warn(`No se pudo obtener el email de Firebase Auth para UID ${doc.id}`);
+        }
+      }
+
       return {
         userId: doc.id,
         name: data.name || 'Sin nombre',
-        email: data.email || 'Sin email',
+        email: email || 'Sin email',
         role: data.role,
         status: data.status || 'activo',
         gameRoles: data.gameRoles || [],
@@ -50,7 +66,7 @@ router.get('/members', async (req: AuthenticatedRequest, res: Response): Promise
         notes: data.notes || '',
         createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt
       };
-    });
+    }));
 
     res.json(members);
   } catch (error) {
@@ -63,7 +79,7 @@ router.get('/members', async (req: AuthenticatedRequest, res: Response): Promise
 router.put('/members/:userId', requireCoach, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { userId } = req.params;
-    const { name, role, status, leadership, gameRoles, bestAgents, notes } = req.body;
+    const { name, role, status, leadership, gameRoles, bestAgents, notes, email } = req.body;
     const coachTeamId = req.user!.teamId;
 
     const userRef = db.collection('users').doc(userId as string);
@@ -81,6 +97,7 @@ router.put('/members/:userId', requireCoach, async (req: AuthenticatedRequest, r
     const updates: Record<string, any> = { updatedAt: new Date() };
 
     if (name && typeof name === 'string') updates.name = name.trim();
+    if (email && typeof email === 'string') updates.email = email.toLowerCase().trim();
     if (role && validRoles.includes(role)) updates.role = role;
     if (status && validStatuses.includes(status)) updates.status = status;
     if (leadership && validLeadershipRoles.includes(leadership)) updates.leadership = leadership;
