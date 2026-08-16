@@ -244,8 +244,23 @@ router.get('/shared-coaches', requireCoach, async (req: AuthenticatedRequest, re
       return;
     }
 
-    const entries = teamDoc.data()?.sharedCoachEntries || [];
-    res.json(entries);
+    const data = teamDoc.data();
+    const entries = data?.sharedCoachEntries || [];
+    const allowedEmails = data?.allowedCoachEmails || [];
+
+    if (entries.length > 0) {
+      res.json(entries);
+    } else if (allowedEmails.length > 0) {
+      const fallbackEntries = allowedEmails.map((em: string) => ({
+        email: em,
+        accessType: 'suplente',
+        grantedAt: new Date().toISOString(),
+        label: 'Coach Suplente'
+      }));
+      res.json(fallbackEntries);
+    } else {
+      res.json([]);
+    }
   } catch (error) {
     console.error('Error fetching shared coaches:', error);
     res.status(500).json({ error: 'Error al obtener coaches autorizados' });
