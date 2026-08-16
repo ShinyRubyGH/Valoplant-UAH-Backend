@@ -26,7 +26,7 @@ router.get('/members', async (req: AuthenticatedRequest, res: Response): Promise
         role: data.role, // 'coach' o 'player'
         status: data.status || 'activo',
         gameRoles: data.gameRoles || [], // ej: ['Controlador', 'Flex']
-        teamRole: data.teamRole || (data.role === 'coach' ? 'igl' : 'miembro'), // 'igl', 'co igl', 'miembro'
+        leadership: data.leadership || (data.role === 'coach' ? 'coach' : 'miembro'),
         createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt
       };
     });
@@ -42,7 +42,7 @@ router.get('/members', async (req: AuthenticatedRequest, res: Response): Promise
 router.put('/members/:userId', requireCoach, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
     const { userId } = req.params;
-    const { status, gameRoles, teamRole } = req.body;
+    const { status, gameRoles, leadership } = req.body;
     const coachTeamId = req.user!.teamId;
 
     // Verificar que el usuario pertenece al mismo equipo
@@ -54,13 +54,13 @@ router.put('/members/:userId', requireCoach, async (req: AuthenticatedRequest, r
       return;
     }
 
-    const validStatuses = ['activo', 'desactivado', 'fuera del team'];
-    const validTeamRoles = ['igl', 'co igl', 'miembro'];
+    const validStatuses = ['activo', 'desactivado', 'fuera del team', 'fuera_del_team'];
+    const validLeadershipRoles = ['igl', 'co_igl', 'miembro', 'coach'];
 
     const updates: Record<string, any> = {};
     if (status && validStatuses.includes(status)) updates.status = status;
     if (Array.isArray(gameRoles)) updates.gameRoles = gameRoles;
-    if (teamRole && validTeamRoles.includes(teamRole)) updates.teamRole = teamRole;
+    if (leadership && validLeadershipRoles.includes(leadership)) updates.leadership = leadership;
 
     if (Object.keys(updates).length > 0) {
         await userRef.update(updates);
