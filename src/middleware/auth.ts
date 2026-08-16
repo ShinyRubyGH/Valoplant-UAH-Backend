@@ -13,7 +13,7 @@ export async function requireAuth(request: AuthenticatedRequest, response: Respo
     if (!data.teamId || (data.role !== 'coach' && data.role !== 'player') || !data.name) {
       response.status(403).json({ error: 'El perfil de usuario es inválido.' }); return;
     }
-    request.user = { userId: decoded.uid, teamId: data.teamId, role: data.role, name: data.name } as AuthenticatedUser;
+    request.user = { userId: decoded.uid, teamId: data.teamId, role: data.role, name: data.name, email: decoded.email } as AuthenticatedUser;
     next();
   } catch (error) {
     console.error('Auth Error:', error);

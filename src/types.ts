@@ -7,6 +7,7 @@ export interface AuthenticatedUser {
   teamId: string;
   role: UserRole;
   name: string;
+  email?: string;
 }
 
 export interface AuthenticatedRequest extends Request {
