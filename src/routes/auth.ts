@@ -196,4 +196,57 @@ router.delete('/team-members/:userId', requireAuth, requireCoach, async (req: Au
   }
 });
 
+// Endpoint para cambiar contraseña de un integrante (Solo Coach)
+router.post('/reset-member-password', requireAuth, requireCoach, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { userId, email, newPassword, coachSecretKey } = req.body;
+    
+    if ((!userId && !email) || !newPassword || !coachSecretKey) {
+      res.status(400).json({ error: 'Faltan campos obligatorios' });
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      res.status(400).json({ error: 'La contraseña debe tener un mínimo de 6 caracteres.' });
+      return;
+    }
+
+    // Validar coachSecretKey
+    if (coachSecretKey.trim() !== COACH_SECRET_KEY) {
+      res.status(401).json({ error: 'Clave secreta de coach inválida.' });
+      return;
+    }
+
+    let targetUid = userId;
+    if (!targetUid && email) {
+      const userRecord = await adminAuth.getUserByEmail(email);
+      targetUid = userRecord.uid;
+    }
+
+    // Verificar que el targetUid pertenezca al mismo team del coach
+    const memberDoc = await db.doc(`users/${targetUid}`).get();
+    if (!memberDoc.exists || memberDoc.data()?.teamId !== req.user!.teamId) {
+      res.status(404).json({ error: 'Usuario no encontrado o no pertenece a tu equipo.' });
+      return;
+    }
+
+    await adminAuth.updateUser(targetUid, { password: newPassword });
+    await adminAuth.revokeRefreshTokens(targetUid);
+
+    await db.doc(`users/${targetUid}`).update({ 
+      passwordLastChanged: new Date(), 
+      updatedAt: new Date() 
+    });
+
+    res.json({ success: true, message: 'Contraseña de miembro actualizada exitosamente.' });
+  } catch (error: any) {
+    console.error('Error reset password:', error);
+    if (error.code === 'auth/user-not-found') {
+      res.status(404).json({ error: 'Usuario no encontrado.' });
+      return;
+    }
+    res.status(500).json({ error: 'Error interno al actualizar la contraseña del usuario.' });
+  }
+});
+
 export default router;

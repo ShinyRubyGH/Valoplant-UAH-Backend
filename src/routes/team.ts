@@ -128,7 +128,7 @@ router.put('/members/:userId', requireCoach, async (req: AuthenticatedRequest, r
 // POST /api/team/grant-coach-access - Comparte acceso con coach externo
 router.post('/grant-coach-access', requireCoach, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { teamId, coachEmail } = req.body;
+    const { teamId, coachEmail, accessType, durationHours } = req.body;
     if (!teamId || !coachEmail) {
       res.status(400).json({ error: 'teamId y coachEmail son requeridos' });
       return;
@@ -152,8 +152,33 @@ router.post('/grant-coach-access', requireCoach, async (req: AuthenticatedReques
     const currentAllowed = teamDoc.data()?.allowedCoachEmails || [];
     if (!currentAllowed.includes(email)) {
       currentAllowed.push(email);
-      await teamRef.update({ allowedCoachEmails: currentAllowed });
     }
+
+    const rawEntries = teamDoc.data()?.sharedCoachEntries || [];
+    const entries = rawEntries.filter((e: any) => e.email !== email);
+
+    const typeLabel = accessType === 'suplente' ? 'suplente' : 'observador';
+    const hours = durationHours ? Number(durationHours) : 24;
+
+    const grantedAt = new Date().toISOString();
+    let expiresAt: string | undefined = undefined;
+    if (typeLabel === 'suplente' && hours > 0) {
+      expiresAt = new Date(Date.now() + hours * 3600 * 1000).toISOString();
+    }
+
+    entries.push({
+      email,
+      accessType: typeLabel,
+      grantedAt,
+      expiresAt,
+      label: typeLabel === 'suplente' ? `Coach Suplente (${hours}h)` : 'Coach Observador Permanente'
+    });
+
+    await teamRef.update({ 
+      allowedCoachEmails: currentAllowed,
+      sharedCoachEntries: entries,
+      updatedAt: new Date()
+    });
 
     res.json({ message: 'Acceso otorgado al coach' });
   } catch (error) {
@@ -187,8 +212,15 @@ router.post('/revoke-coach-access', requireCoach, async (req: AuthenticatedReque
 
     const currentAllowed = teamDoc.data()?.allowedCoachEmails || [];
     const newAllowed = currentAllowed.filter((e: string) => e !== email);
+
+    const rawEntries = teamDoc.data()?.sharedCoachEntries || [];
+    const newEntries = rawEntries.filter((e: any) => e.email !== email);
     
-    await teamRef.update({ allowedCoachEmails: newAllowed });
+    await teamRef.update({ 
+      allowedCoachEmails: newAllowed,
+      sharedCoachEntries: newEntries,
+      updatedAt: new Date()
+    });
 
     res.json({ message: 'Acceso revocado' });
   } catch (error) {

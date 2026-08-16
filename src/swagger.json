@@ -119,7 +119,7 @@
       "post": {
         "tags": ["Auth"],
         "summary": "Registrar perfil inicial",
-        "description": "Registra un nuevo usuario en la colección de Firestore (para ser usado tras crearlo en Firebase Auth).",
+        "description": "Registra un nuevo usuario en la colección de Firestore.",
         "security": [],
         "requestBody": {
           "required": true,
@@ -129,10 +129,13 @@
                 "type": "object",
                 "required": ["uid", "name", "teamId", "role"],
                 "properties": {
-                  "uid": { "type": "string", "example": "uid12345" },
-                  "name": { "type": "string", "example": "Sebastián" },
-                  "teamId": { "type": "string", "example": "team-fenix" },
-                  "role": { "$ref": "#/components/schemas/UserRole" }
+                  "uid": { "type": "string" },
+                  "name": { "type": "string" },
+                  "email": { "type": "string" },
+                  "teamId": { "type": "string" },
+                  "role": { "$ref": "#/components/schemas/UserRole" },
+                  "leadership": { "type": "string" },
+                  "coachSecretKey": { "type": "string" }
                 }
               }
             }
@@ -141,6 +144,36 @@
         "responses": {
           "201": { "description": "Perfil creado" },
           "400": { "description": "Faltan datos requeridos" }
+        }
+      }
+    },
+    "/api/auth/reset-member-password": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Restablecer contraseña de miembro",
+        "description": "Permite a un coach cambiar la contraseña de cualquier miembro de su equipo usando la clave secreta maestra.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["newPassword", "coachSecretKey"],
+                "properties": {
+                  "userId": { "type": "string" },
+                  "email": { "type": "string" },
+                  "newPassword": { "type": "string", "minLength": 6 },
+                  "coachSecretKey": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Contraseña actualizada exitosamente" },
+          "400": { "description": "Faltan datos o contraseña muy corta" },
+          "401": { "description": "Clave secreta inválida" },
+          "404": { "description": "Usuario no encontrado o no pertenece al equipo" }
         }
       }
     },
