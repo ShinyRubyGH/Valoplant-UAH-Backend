@@ -91,7 +91,7 @@ router.put('/members/:userId', requireCoach, async (req: AuthenticatedRequest, r
     }
 
     const validStatuses = ['activo', 'desactivado', 'fuera del team', 'fuera_del_team'];
-    const validLeadershipRoles = ['igl', 'co_igl', 'miembro', 'coach'];
+    const validLeadershipRoles = ['igl', 'co_igl', 'miembro', 'coach', 'coach_secundario'];
     const validRoles = ['coach', 'player'];
 
     const updates: Record<string, any> = { updatedAt: new Date() };

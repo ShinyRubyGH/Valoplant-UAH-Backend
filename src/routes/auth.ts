@@ -32,29 +32,37 @@ router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response):
 // Endpoint para registrar un nuevo perfil (validando clave secreta si es Coach)
 router.post('/register-profile', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   try {
-    const { uid, name, teamId, role, email, coachSecretKey } = req.body;
+    const { uid, name, teamId, role, email, coachSecretKey, leadership } = req.body;
     if (!uid || !name || !teamId || !role) {
       res.status(400).json({ error: 'Faltan datos requeridos (uid, name, teamId, role)' });
       return;
     }
 
-    if (role !== 'coach' && role !== 'player') {
+    let finalRole = role;
+    if (leadership === 'coach' || leadership === 'coach_secundario') {
+      finalRole = 'coach';
+    }
+
+    if (finalRole !== 'coach' && finalRole !== 'player') {
       res.status(400).json({ error: 'El rol debe ser coach o player' });
       return;
     }
 
     // Validar clave secreta para los coaches
-    if (role === 'coach') {
+    if (finalRole === 'coach') {
       if (!coachSecretKey || coachSecretKey.trim() !== COACH_SECRET_KEY) {
         res.status(403).json({ error: 'Clave secreta de Coach incorrecta. Solo los coaches autorizados pueden crear cuentas de Coach.' });
         return;
       }
     }
 
+    const initialLeadership = leadership || (finalRole === 'coach' ? 'coach' : 'miembro');
+
     const userData: any = {
       name: name.trim(),
       teamId: teamId.trim().toLowerCase(),
-      role,
+      role: finalRole,
+      leadership: initialLeadership,
       createdAt: new Date()
     };
 
