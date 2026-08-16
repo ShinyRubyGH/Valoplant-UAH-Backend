@@ -229,4 +229,61 @@ router.post('/revoke-coach-access', requireCoach, async (req: AuthenticatedReque
   }
 });
 
+// GET /api/team/shared-coaches - Obtener coaches autorizados
+router.get('/shared-coaches', requireCoach, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const teamId = req.user?.teamId;
+    if (!teamId) {
+      res.status(400).json({ error: 'Team ID requerido' });
+      return;
+    }
+
+    const teamDoc = await db.collection('teams').doc(teamId).get();
+    if (!teamDoc.exists) {
+      res.json([]);
+      return;
+    }
+
+    const entries = teamDoc.data()?.sharedCoachEntries || [];
+    res.json(entries);
+  } catch (error) {
+    console.error('Error fetching shared coaches:', error);
+    res.status(500).json({ error: 'Error al obtener coaches autorizados' });
+  }
+});
+
+// GET /api/team/accessible-teams - Obtener equipos que le dieron acceso a este coach
+router.get('/accessible-teams', requireCoach, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userEmail = req.user?.email;
+    if (!userEmail) {
+      res.json([]);
+      return;
+    }
+
+    const snapshot = await db.collection('teams')
+      .where('allowedCoachEmails', 'array-contains', userEmail)
+      .get();
+
+    const teams = snapshot.docs.map(doc => {
+      const data = doc.data();
+      const entries = data.sharedCoachEntries || [];
+      const entry = entries.find((e: any) => e.email === userEmail);
+      
+      return {
+        teamId: data.teamId,
+        teamName: data.name,
+        coachName: data.coachName,
+        accessType: entry?.accessType || 'observador',
+        expiresAt: entry?.expiresAt
+      };
+    });
+
+    res.json(teams);
+  } catch (error) {
+    console.error('Error fetching accessible teams:', error);
+    res.status(500).json({ error: 'Error al obtener equipos accesibles' });
+  }
+});
+
 export default router;
