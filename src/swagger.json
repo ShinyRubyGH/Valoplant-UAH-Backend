@@ -175,7 +175,7 @@
                   "name": { "type": "string" },
                   "role": { "type": "string", "enum": ["coach", "player"] },
                   "status": { "type": "string", "enum": ["activo", "desactivado", "fuera del team", "fuera_del_team"] },
-                  "leadership": { "type": "string", "enum": ["igl", "co_igl", "miembro", "coach"] },
+                  "leadership": { "type": "string", "enum": ["igl", "co_igl", "miembro", "coach", "coach_secundario"] },
                   "gameRoles": { "type": "array", "items": { "type": "string" } },
                   "bestAgents": { "type": "array", "items": { "type": "string" } },
                   "notes": { "type": "string" }
