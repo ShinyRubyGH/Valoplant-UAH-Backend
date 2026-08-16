@@ -144,6 +144,44 @@
         }
       }
     },
+    "/api/team/members": {
+      "get": {
+        "tags": ["Team"],
+        "summary": "Listar miembros del equipo",
+        "description": "Devuelve todos los miembros que pertenecen al equipo del usuario autenticado.",
+        "responses": {
+          "200": { "description": "Miembros obtenidos" }
+        }
+      }
+    },
+    "/api/team/members/{userId}": {
+      "put": {
+        "tags": ["Team"],
+        "summary": "Actualizar miembro del equipo",
+        "description": "Actualiza el rol, estado y roles de juego de un miembro. Solo permitido para coaches.",
+        "parameters": [
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": { "type": "string", "enum": ["activo", "desactivado", "fuera del team"] },
+                  "teamRole": { "type": "string", "enum": ["igl", "co igl", "miembro"] },
+                  "gameRoles": { "type": "array", "items": { "type": "string" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Usuario actualizado" }
+        }
+      }
+    },
     "/api/notes": {
       "get": {
         "tags": ["Notes"],
