@@ -46,7 +46,7 @@ router.put('/members/:userId', requireCoach, async (req: AuthenticatedRequest, r
     const coachTeamId = req.user!.teamId;
 
     // Verificar que el usuario pertenece al mismo equipo
-    const userRef = db.collection('users').doc(userId);
+    const userRef = db.collection('users').doc(userId as string);
     const userSnap = await userRef.get();
 
     if (!userSnap.exists || userSnap.data()?.teamId !== coachTeamId) {
