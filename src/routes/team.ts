@@ -91,7 +91,7 @@ router.put('/members/:userId', requireCoach, async (req: AuthenticatedRequest, r
     }
 
     const validStatuses = ['activo', 'desactivado', 'fuera del team', 'fuera_del_team'];
-    const validLeadershipRoles = ['igl', 'co_igl', 'miembro', 'coach', 'coach_secundario'];
+    const validLeadershipRoles = ['igl', 'co_igl', 'miembro', 'coach', 'coach_secundario', 'analista'];
     const validRoles = ['coach', 'player'];
 
     const updates: Record<string, any> = { updatedAt: new Date() };
@@ -100,7 +100,35 @@ router.put('/members/:userId', requireCoach, async (req: AuthenticatedRequest, r
     if (email && typeof email === 'string') updates.email = email.toLowerCase().trim();
     if (role && validRoles.includes(role)) updates.role = role;
     if (status && validStatuses.includes(status)) updates.status = status;
-    if (leadership && validLeadershipRoles.includes(leadership)) updates.leadership = leadership;
+    
+    if (leadership && validLeadershipRoles.includes(leadership)) {
+      updates.leadership = leadership;
+      
+      // Si el rol es único (coach, coach_secundario, analista), degradar al anterior
+      if (['coach', 'coach_secundario', 'analista'].includes(leadership)) {
+        const uniqueQuery = await db.collection('users')
+          .where('teamId', '==', coachTeamId)
+          .where('leadership', '==', leadership)
+          .get();
+          
+        const batch = db.batch();
+        let shouldCommit = false;
+        uniqueQuery.docs.forEach(doc => {
+          if (doc.id !== userId) {
+            batch.update(doc.ref, { 
+              leadership: 'miembro', 
+              role: leadership === 'coach' ? 'player' : doc.data().role,
+              updatedAt: new Date() 
+            });
+            shouldCommit = true;
+          }
+        });
+        if (shouldCommit) {
+          await batch.commit();
+        }
+      }
+    }
+
     if (Array.isArray(gameRoles)) updates.gameRoles = gameRoles;
     if (Array.isArray(bestAgents)) updates.bestAgents = bestAgents;
     if (typeof notes === 'string') updates.notes = notes;

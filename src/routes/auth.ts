@@ -39,7 +39,7 @@ router.post('/register-profile', async (req: AuthenticatedRequest, res: Response
     }
 
     let finalRole = role;
-    if (leadership === 'coach' || leadership === 'coach_secundario') {
+    if (['coach', 'coach_secundario', 'analista'].includes(leadership)) {
       finalRole = 'coach';
     }
 
@@ -57,6 +57,28 @@ router.post('/register-profile', async (req: AuthenticatedRequest, res: Response
     }
 
     const initialLeadership = leadership || (finalRole === 'coach' ? 'coach' : 'miembro');
+
+    // Demote old user if role is unique
+    if (['coach', 'coach_secundario', 'analista'].includes(initialLeadership)) {
+      const uniqueQuery = await db.collection('users')
+        .where('teamId', '==', teamId.trim().toLowerCase())
+        .where('leadership', '==', initialLeadership)
+        .get();
+        
+      const batch = db.batch();
+      let shouldCommit = false;
+      uniqueQuery.docs.forEach(doc => {
+        batch.update(doc.ref, { 
+          leadership: 'miembro', 
+          role: initialLeadership === 'coach' ? 'player' : doc.data().role,
+          updatedAt: new Date() 
+        });
+        shouldCommit = true;
+      });
+      if (shouldCommit) {
+        await batch.commit();
+      }
+    }
 
     const userData: any = {
       name: name.trim(),
